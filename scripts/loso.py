@@ -3,12 +3,13 @@
 [불러오기용 모듈] 번호 붙은 스크립트가 import해서 쓴다. 직접 실행하면 확인 출력만 한다 (결과물 없음).
 
 실행: python scripts/loso.py [--data outputs/dataset.npz] [--split loso|trialwise]  → fold별 모양 확인
-재사용: from loso import FOLDS                                 (scripts/2_training.py 가 이렇게 쓴다)
+재사용: from loso import FOLDS, load_dataset                   (scripts/2_training.py 가 이렇게 쓴다)
 
-dataset.npz (scripts/1_preprocessing.py가 만든 표준화 전 특징 전체)를 받아 두 가지 방식으로 나눈다.
+dataset.npz (scripts/1_preprocessing.py가 만든 표준화 전 창 단위 특징)를 시행 단위로 묶은 뒤 두 가지 방식으로 나눈다.
   loso      피험자 한 명씩 테스트 (8명 → 8-fold). 처음 보는 사람에 대한 성능
   trialwise 시행 1920개를 라벨로 층화해 5-fold (논문·강의 방식). 같은 사람의 다른 시행에 대한 성능
 어느 쪽이든 한 시행의 창 19개는 같은 쪽으로 가고, 표준화는 fold마다 학습 쪽 통계로만 한다.
+표본 = 시행 하나 (load_dataset 이 창 19개를 이어 붙여 475차원 x 1920개로 만든다. 논문 Table 1의 구성).
 흐름도: docs/loso.md
 """
 import argparse
@@ -16,11 +17,37 @@ from collections.abc import Iterator
 
 import numpy as np
 from sklearn.model_selection import LeaveOneGroupOut, StratifiedKFold
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from data import ROOT
 
 DATASET = ROOT / "outputs" / "dataset.npz"
+
+def to_trials(d: dict) -> dict:
+    """1_preprocessing.py 가 저장한 창 단위 배열 (36480행) → 시행 단위 (1920행). 한 시행의 창 19개를 순서대로 이어 붙인다.
+
+    dataset.npz 의 행 순서가 시행 x 창(19)이라는 전제를 확인한 뒤 reshape 한다.
+    """
+    X, trial = d["X"], d["trial"]
+    n = len(np.unique(trial)); k = len(X) // n
+    if not np.array_equal(trial, np.repeat(np.arange(n), k)):
+        raise ValueError("행 순서가 시행 x 창 이 아니라서 시행 단위로 묶을 수 없다")
+    out = {"X": X.reshape(n, k * X.shape[1]), "y": d["y"][::k], "subject": d["subject"][::k], "trial": trial[::k]}
+    if "feature_names" in d:
+        out["feature_names"] = np.array([f"w{w + 1:02d}_{f}" for w in range(k) for f in d["feature_names"]])
+    return out
+
+
+def load_dataset(path=DATASET) -> tuple[dict, LabelEncoder]:
+    """dataset.npz 를 읽어 라벨을 0~7 정수로 바꾸고 (XGBoost용) 시행 단위 dict 와 LabelEncoder 를 돌려준다.
+
+    표본 = 시행 하나 (창 19개 x 25차원 = 475차원, 1920개). 논문 Table 1 (학습 1536 + 테스트 384) 과 같은 구성.
+    LabelEncoder 는 라벨 이름만 보므로 전체 y 로 fit 해도 테스트 정보가 새지 않는다.
+    """
+    raw = np.load(path); le = LabelEncoder()
+    d = {"X": raw["X"], "y": le.fit_transform(raw["y"]), "subject": raw["subject"], "trial": raw["trial"],
+         "feature_names": raw["feature_names"]}
+    return to_trials(d), le
 
 Fold = tuple[str, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 """(fold 이름, Xtr, ytr, Xte, yte, te). te는 테스트 창의 행 번호 → d["subject"][te] 등으로 원본 열을 찾는다"""
@@ -68,11 +95,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--split", choices=FOLDS, default="loso")
     args = parser.parse_args(argv)
 
-    d = np.load(args.data)
-    print(f"X {d['X'].shape} · 피험자 {len(np.unique(d['subject']))}명 · 시행 {len(np.unique(d['trial']))}개 → {args.split}")
+    d, _ = load_dataset(args.data)
+    print(f"X {d['X'].shape} (시행 단위) · 피험자 {len(np.unique(d['subject']))}명 → {args.split}")
     for name, Xtr, ytr, Xte, yte, te in FOLDS[args.split](d):
         subj = "".join(np.unique(d["subject"][te]))
-        print(f"{name}: 학습 {Xtr.shape[0]}창 / 테스트 {Xte.shape[0]}창 (피험자 {subj}, 시행 {len(np.unique(d['trial'][te]))}개)  "
+        print(f"{name}: 학습 {Xtr.shape[0]} / 테스트 {Xte.shape[0]} 표본 (피험자 {subj})  "
               f"학습 평균 {np.abs(Xtr.mean(0)).max():.0e} · 테스트 평균 최대 {np.abs(Xte.mean(0)).max():.2f}")
 
 

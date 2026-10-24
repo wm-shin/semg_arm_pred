@@ -20,10 +20,10 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 
 from data import ROOT
-from loso import DATASET, FOLDS
+from loso import DATASET, FOLDS, load_dataset
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -98,10 +98,9 @@ def main(argv: list[str] | None = None) -> None:
     out = OUT / args.split
     out.mkdir(parents=True, exist_ok=True)
 
-    raw = np.load(args.data)
-    le = LabelEncoder()
-    d = {"X": raw["X"], "y": le.fit_transform(raw["y"]), "subject": raw["subject"], "trial": raw["trial"]}
+    d, le = load_dataset(args.data)
     n = len(d["X"])
+    print(f"X {d['X'].shape} (시행 단위) · 분할 {args.split}")
     tcurves, dcurves = {}, {}
     for name, _, _, _, _, te in FOLDS[args.split](d):
         tr = np.setdiff1d(np.arange(n), te)                   # 외부 학습 행 (테스트 제외)
@@ -112,7 +111,7 @@ def main(argv: list[str] | None = None) -> None:
         tcurves[name] = trees_curve(Xa, ya, Xv, yv)
         dcurves[name] = depth_curve(Xa, ya, Xv, yv)
         vdesc = np.unique(d["subject"][v])[0] if args.split == "loso" else f"{len(np.unique(d['trial'][v]))}시행"
-        print(f"{name}: 내부 학습 {len(a)}창 / 검증 {len(v)}창 ({vdesc})  "
+        print(f"{name}: 내부 학습 {len(a)} / 검증 {len(v)} 표본 ({vdesc})  "
               f"트리 100개 {tcurves[name][99]:.3f} · 300개 {tcurves[name][-1]:.3f} · "
               f"깊이 최적 {['R' if x is None else x for x in DEPTHS][dcurves[name].argmax()]} ({dcurves[name].max():.3f})", flush=True)
 

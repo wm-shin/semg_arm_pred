@@ -2,6 +2,7 @@
 
 [4단계] 결과물: outputs/week_3/cut_sweep.csv · figures/week_3/cut_sweep.png
        1_preprocessing.py 의 cut 시작점을 0~3 s 로 옮겨 가며 특징을 다시 뽑고, RF 로 trial-wise 와 LOSO 정확도를 잰다.
+       표본은 2_training.py 와 같은 시행 단위(475차원).
        dataset.npz 는 건드리지 않는다 (특징은 메모리에서만 만든다).
 
 실행: python scripts/4_cut_sweep.py [--starts 0 0.5 1 1.5 2 2.5 3]
@@ -22,7 +23,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
 from data import ROOT, FS, load_trials
-from loso import FOLDS
+from loso import FOLDS, to_trials
 
 pp = importlib.import_module("1_preprocessing")        # 숫자로 시작하는 모듈은 import 문으로 못 불러온다
 matplotlib.use("Agg")
@@ -36,13 +37,13 @@ CHANCE = 1 / 8
 
 
 def features_at(Xf: np.ndarray, trials: pd.DataFrame, start_s: float, le: LabelEncoder) -> dict:
-    """cut 시작점만 바꿔 1_preprocessing.py 와 같은 창·특징을 만든다 (필터는 이미 적용된 Xf)"""
+    """cut 시작점만 바꿔 1_preprocessing.py 와 같은 창·특징을 만들고 시행 단위(475차원)로 묶는다 (필터는 이미 적용된 Xf)"""
     start = int(start_s * FS)
     feats = np.stack([np.stack([pp.td_features(w) for w in pp.make_windows(pp.cut(x, start))]) for x in Xf])
     n, k, d = feats.shape
     rep = lambda c: np.repeat(trials[c].astype(str).to_numpy(), k)
-    return {"X": feats.reshape(n * k, d), "y": le.transform(rep("label")), "subject": rep("subject"),
-            "trial": np.repeat(np.arange(n), k)}
+    return to_trials({"X": feats.reshape(n * k, d), "y": le.transform(rep("label")), "subject": rep("subject"),
+                      "trial": np.repeat(np.arange(n), k)})
 
 
 def rf_cv(d: dict, split: str) -> tuple[float, float]:
@@ -66,9 +67,9 @@ def plot(res: pd.DataFrame, env_t: np.ndarray, env: np.ndarray, path) -> None:
     a2.axvline(1.0, color="k", ls="--", lw=0.8, label="default cut 1.0–3.0 s (2_training.py)")
     a2.set_xlabel("cut start (s); each cut is 2 s long"); a2.set_ylabel("RF accuracy"); a2.set_ylim(0, 1); a2.grid(alpha=0.3)
     a2.set_xticks(res.start_s, [f"{s:.1f}–{s + 2:.1f}" for s in res.start_s], rotation=30)
-    a2.legend(loc="upper left")
+    a2.legend(loc="center left", fontsize=8)
     a2.set_title("RF accuracy vs. which 2 s of the trial is used")
-    fig.tight_layout(); path.parent.mkdir(parents=True, exist_ok=True); fig.savefig(path, dpi=120); plt.close(fig)
+    fig.tight_layout(); path.parent.mkdir(parents=True, exist_ok=True); fig.savefig(path, dpi=120, bbox_inches="tight"); plt.close(fig)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -89,18 +90,19 @@ def main(argv: list[str] | None = None) -> None:
         t0 = time.time()
         d = features_at(Xf, trials, s, le)
         seg_rms = float(np.sqrt((Xf[:, int(s * FS):int(s * FS) + 2000] ** 2).mean()))
-        tw, tw_sd = rf_cv(d, "trialwise"); lo, lo_sd = rf_cv(d, "loso")
-        rows.append({"start_s": s, "end_s": s + 2, "segment_rms": seg_rms,
-                     "trialwise_acc": tw, "trialwise_std": tw_sd, "loso_acc": lo, "loso_std": lo_sd})
-        print(f"cut {s:.1f}~{s + 2:.1f} s  구간 RMS {seg_rms * 1e3:5.2f}e-3  trial-wise {tw:.3f} ± {tw_sd:.3f}  LOSO {lo:.3f} ± {lo_sd:.3f}  ({time.time() - t0:.0f}s)", flush=True)
+        row = {"start_s": s, "end_s": s + 2, "segment_rms": seg_rms}
+        for split in ("trialwise", "loso"):
+            row[f"{split}_acc"], row[f"{split}_std"] = rf_cv(d, split)
+        rows.append(row)
+        print(f"cut {s:.1f}~{s + 2:.1f} s  구간 RMS {seg_rms * 1e3:5.2f}e-3  "
+              f"trial-wise {row['trialwise_acc']:.3f} ± {row['trialwise_std']:.3f}  LOSO {row['loso_acc']:.3f} ± {row['loso_std']:.3f}  ({time.time() - t0:.0f}s)", flush=True)
 
     res = pd.DataFrame(rows)
     OUT.parent.mkdir(parents=True, exist_ok=True); res.to_csv(OUT, index=False)
     plot(res, env_t, env, FIG)
-    best, motion = res.loc[res.trialwise_acc.idxmax()], res.loc[res.start_s == 1.0].squeeze()
-    print(f"\ntrial-wise 최고 {best.trialwise_acc:.3f} @ {best.start_s:.1f}~{best.end_s:.1f} s (구간 RMS {best.segment_rms * 1e3:.2f}e-3) · "
-          f"동작 구간 1~3 s {motion.trialwise_acc:.3f} (구간 RMS {motion.segment_rms * 1e3:.2f}e-3)")
-    print(f"LOSO 범위 {res.loso_acc.min():.3f}~{res.loso_acc.max():.3f} (우연 {CHANCE:.3f})")
+    pd.set_option("display.width", 200)
+    print("\n" + res.set_index("start_s")[[c for c in res.columns if c.endswith("_acc")]].round(3).to_string())
+    print(f"우연 {CHANCE:.3f}")
     print(f"저장: {OUT}, {FIG}")
 
 

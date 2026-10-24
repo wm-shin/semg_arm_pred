@@ -67,7 +67,7 @@ def plot(res: pd.DataFrame, env_t: np.ndarray, env: np.ndarray, path) -> None:
     a2.axvline(1.0, color="k", ls="--", lw=0.8, label="default cut 1.0–3.0 s (2_training.py)")
     a2.set_xlabel("cut start (s); each cut is 2 s long"); a2.set_ylabel("RF accuracy"); a2.set_ylim(0, 1); a2.grid(alpha=0.3)
     a2.set_xticks(res.start_s, [f"{s:.1f}–{s + 2:.1f}" for s in res.start_s], rotation=30)
-    a2.legend(loc="center left", fontsize=8)
+    a2.legend(loc="center right", fontsize=8)
     a2.set_title("RF accuracy vs. which 2 s of the trial is used")
     fig.tight_layout(); path.parent.mkdir(parents=True, exist_ok=True); fig.savefig(path, dpi=120, bbox_inches="tight"); plt.close(fig)
 

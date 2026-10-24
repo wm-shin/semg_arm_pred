@@ -7,7 +7,7 @@
 
 dataset.npz (scripts/1_preprocessing.py가 만든 표준화 전 창 단위 특징)를 시행 단위로 묶은 뒤 두 가지 방식으로 나눈다.
   loso      피험자 한 명씩 테스트 (8명 → 8-fold). 처음 보는 사람에 대한 성능
-  trialwise 시행 1920개를 라벨로 층화해 5-fold (논문·강의 방식). 같은 사람의 다른 시행에 대한 성능
+  trialwise 시행 1920개를 피험자x라벨로 층화해 5-fold (논문·강의 방식). 같은 사람의 다른 시행에 대한 성능
 어느 쪽이든 한 시행의 창 19개는 같은 쪽으로 가고, 표준화는 fold마다 학습 쪽 통계로만 한다.
 표본 = 시행 하나 (load_dataset 이 창 19개를 이어 붙여 475차원 x 1920개로 만든다. 논문 Table 1의 구성).
 흐름도: docs/loso.md
@@ -73,14 +73,17 @@ def loso_folds(d) -> Iterator[Fold]:
 def trialwise_folds(d, k: int = 5, seed: int = 42) -> Iterator[Fold]:
     """시행 단위 층화 k-fold (논문·강의 방식). fold 이름 = 'fold1'~'fold5'
 
-    시행 1920개를 라벨 비율을 지키며 k묶음으로 나눈 뒤 창 36480개로 펼친다.
+    시행 1920개를 (피험자 x 라벨) 64칸의 비율을 지키며 k묶음으로 나눈다. 칸마다 시행 30개라
+    fold마다 정확히 6개씩 테스트에 들어가고, 피험자 비율과 클래스 비율이 모두 fold 간에 같다.
+    (라벨로만 층화하면 fold마다 피험자별 시행 수가 36~60개로 흔들리고 어떤 피험자x클래스 칸은 0개가 된다.)
     테스트 fold에 8명이 다 섞여 있으므로 학습 때 본 사람의 다른 시행을 맞히는 과제다.
-    d: 같은 키(X, y, trial)를 가진 dict
+    d: 같은 키(X, y, subject, trial)를 가진 dict
     """
     trial = d["trial"]
-    trials, first = np.unique(trial, return_index=True)   # 시행 번호, 그 시행의 첫 창 행
+    trials, first = np.unique(trial, return_index=True)   # 시행 번호, 그 시행의 첫 행
+    strata = np.char.add(d["subject"][first].astype(str), d["y"][first].astype(str))   # 'a0', 'a1', … 64종
     skf = StratifiedKFold(k, shuffle=True, random_state=seed)
-    for i, (tr_t, te_t) in enumerate(skf.split(trials, d["y"][first]), 1):
+    for i, (tr_t, te_t) in enumerate(skf.split(trials, strata), 1):
         tr = np.flatnonzero(np.isin(trial, trials[tr_t]))
         te = np.flatnonzero(np.isin(trial, trials[te_t]))
         yield _fold(d, f"fold{i}", tr, te)

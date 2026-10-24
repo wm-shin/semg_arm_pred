@@ -8,7 +8,7 @@
 딥러닝의 epoch별 검증 곡선에 해당하는 것을 RF로 만든다.
   트리 수 곡선   트리 N_MAX개를 한 번 학습해 두고, 앞에서 k개만 다수결했을 때의 검증 정확도를 k=1..N_MAX 로 그린다
   깊이 곡선     max_depth 를 바꿔 가며 학습해 검증 정확도를 그린다
-검증 데이터는 외부 fold 의 학습 쪽 안에서 뗀다 (loso: 학습 7명 중 1명, trialwise: 학습 시행의 20%).
+검증 데이터는 외부 fold 의 학습 쪽 안에서 뗀다 (loso: 학습 7명 중 1명, trialwise: 학습 시행의 20%를 피험자x라벨로 층화).
 외부 fold 마다 곡선을 하나씩 만들고 평균 ± 표준편차로 모은다 (2_training.py 의 fold 평균과 같은 방식).
 흐름도: docs/rf_validation.md
 """
@@ -45,7 +45,8 @@ def inner_split(d: dict, tr: np.ndarray, split: str, test_name: str) -> tuple[np
     else:
         trial = d["trial"][tr]
         trials, first = np.unique(trial, return_index=True)
-        _, val_t = next(StratifiedKFold(5, shuffle=True, random_state=SEED).split(trials, d["y"][tr][first]))
+        strata = np.char.add(d["subject"][tr][first].astype(str), d["y"][tr][first].astype(str))   # 피험자 x 라벨 (loso.py 와 같은 기준)
+        _, val_t = next(StratifiedKFold(5, shuffle=True, random_state=SEED).split(trials, strata))
         is_val = np.isin(trial, trials[val_t])
     return tr[~is_val], tr[is_val]
 

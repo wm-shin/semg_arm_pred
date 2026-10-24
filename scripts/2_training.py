@@ -9,7 +9,7 @@ dataset.npz를 읽어 --split이 고른 분할 생성기(scripts/loso.py의 FOLD
 제출물 ② 성능 비교표 · ③ fold별 정확도 · ④ 대응표본 t-검정 · ⑤ 혼동행렬 · ⑥ 계산 비용을 만든다.
 기본은 LOSO 8-fold(처음 보는 사람), --split trialwise 는 논문·강의 방식의 시행 단위 5-fold.
 표본은 시행 하나 (창 19개 이어 붙인 475차원, 1920개) = 논문 Table 1 의 구성. load_dataset 이 만든다.
-분할·표준화는 scripts/loso.py, 특징 추출은 scripts/1_preprocessing.py. 흐름도: docs/training.md
+분할·표준화는 scripts/loso.py, 특징 추출은 scripts/1_preprocessing.py. 흐름도: mermaid/training.md
 """
 import argparse
 import time

@@ -7,7 +7,7 @@
 
 CSV 64개 = 피험자 8명 x 각도 2종 x 동작 4종. 파일 하나에 같은 클래스의 30회 시행이
 이어서 기록되어 있고, mark=1인 샘플이 각 시행(5초)의 시작이다.
-흐름도: docs/data.md
+흐름도: mermaid/data.md
 """
 import argparse
 import glob

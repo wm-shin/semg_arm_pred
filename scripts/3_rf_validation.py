@@ -10,7 +10,7 @@
   깊이 곡선     max_depth 를 바꿔 가며 학습해 검증 정확도를 그린다
 검증 데이터는 외부 fold 의 학습 쪽 안에서 뗀다 (loso: 학습 7명 중 1명, trialwise: 학습 시행의 20%를 피험자x라벨로 층화).
 외부 fold 마다 곡선을 하나씩 만들고 평균 ± 표준편차로 모은다 (2_training.py 의 fold 평균과 같은 방식).
-흐름도: docs/rf_validation.md
+흐름도: mermaid/rf_validation.md
 """
 import argparse
 from pathlib import Path

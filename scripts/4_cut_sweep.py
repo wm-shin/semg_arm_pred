@@ -9,7 +9,7 @@
 
 보려는 것: 동작 구간(1~3 s)보다 휴식 구간(0~2 s, 3~5 s)에서 trial-wise 정확도가 높다면, 모델이 근육 활동이 아니라
 파일(피험자 x 클래스 CSV = 세션)마다 다른 잡음 수준을 외우는 것이다. 그 서명은 다른 사람에게 옮겨가지 않으므로
-LOSO 는 어느 구간에서도 오르지 않아야 한다. 흐름도: docs/cut_sweep.md
+LOSO 는 어느 구간에서도 오르지 않아야 한다. 흐름도: mermaid/cut_sweep.md
 """
 import argparse
 import importlib

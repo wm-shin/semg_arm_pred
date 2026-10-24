@@ -10,7 +10,7 @@ dataset.npz (scripts/1_preprocessing.py가 만든 표준화 전 창 단위 특�
   trialwise 시행 1920개를 피험자x라벨로 층화해 5-fold (논문·강의 방식). 같은 사람의 다른 시행에 대한 성능
 어느 쪽이든 한 시행의 창 19개는 같은 쪽으로 가고, 표준화는 fold마다 학습 쪽 통계로만 한다.
 표본 = 시행 하나 (load_dataset 이 창 19개를 이어 붙여 475차원 x 1920개로 만든다. 논문 Table 1의 구성).
-흐름도: docs/loso.md
+흐름도: mermaid/loso.md
 """
 import argparse
 from collections.abc import Iterator

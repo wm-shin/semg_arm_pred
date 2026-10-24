@@ -8,7 +8,7 @@
 → 창마다 25차원 특징 (19, 25). 특징은 시행마다 따로 계산되어 분할과 무관하므로 전체 시행을
 한 번에 만들어 표준화 전 상태로 저장한다. 학습/테스트 분할(피험자 단위 LOSO)과 표준화는
 fold마다 달라지므로 scripts/loso.py 에서 한다.
-흐름도: docs/preprocessing.md
+흐름도: mermaid/preprocessing.md
 """
 import argparse
 from pathlib import Path

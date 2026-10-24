@@ -1,7 +1,9 @@
 """sEMG Hand Gesture · Elbow Angle 데이터셋 읽기 (1주차 실습 3-1, 3-3).
 
+[불러오기용 모듈] 번호 붙은 스크립트가 import해서 쓴다. 직접 실행하면 확인 출력만 한다 (결과물 없음).
+
 실행:   python scripts/data.py          → 시행 수 · 배열 모양 · mark 간격 · 클래스별 분포 출력
-재사용: from data import load_trials    (scripts/preprocessing.py 가 이렇게 쓴다)
+재사용: from data import load_trials    (scripts/1_preprocessing.py 가 이렇게 쓴다)
 
 CSV 64개 = 피험자 8명 x 각도 2종 x 동작 4종. 파일 하나에 같은 클래스의 30회 시행이
 이어서 기록되어 있고, mark=1인 샘플이 각 시행(5초)의 시작이다.

@@ -1,6 +1,6 @@
-# scripts/preprocessing.py — 전처리 · 특징 추출 · 데이터셋 저장
+# scripts/1_preprocessing.py — 전처리 · 특징 추출 · 데이터셋 저장
 
-실행: `python scripts/preprocessing.py [--out outputs/dataset.npz] [--no-filter]`
+실행: `python scripts/1_preprocessing.py [--out outputs/dataset.npz] [--no-filter]`
 
 시행 1920개 전체에 필터 → 2초 자르기 → 200 ms 윈도우 → 25차원 특징을 만들어 `dataset.npz`로 저장한다. 학습/테스트 분할과 표준화는 하지 않는다 (`scripts/loso.py`가 fold마다 한다).
 

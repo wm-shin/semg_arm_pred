@@ -1,6 +1,8 @@
 """2주차 실습: 전처리와 특징 추출 → dataset.npz
 
-실행: python scripts/preprocessing.py [--out outputs/dataset.npz] [--no-filter]
+[1단계] 결과물: outputs/dataset.npz. 2_training.py 전에 한 번 실행한다.
+
+실행: python scripts/1_preprocessing.py [--out outputs/dataset.npz] [--no-filter]
 
 시행 하나 (5000, 5) → 필터 → 동작 구간 2초 (2000, 5) → 200 ms 창 19개 (19, 200, 5)
 → 창마다 25차원 특징 (19, 25). 특징은 시행마다 따로 계산되어 분할과 무관하므로 전체 시행을

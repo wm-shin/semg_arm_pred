@@ -2,7 +2,7 @@
 
 [1단계] 결과물: outputs/dataset.npz. 2_training.py 전에 한 번 실행한다.
 
-실행: python scripts/1_preprocessing.py [--out outputs/dataset.npz] [--no-filter]
+실행: python scripts/1_preprocessing.py [--out outputs/dataset.npz] [--no-filter] [--start 1.0]
 
 시행 하나 (5000, 5) → 필터 → 동작 구간 2초 (2000, 5) → 200 ms 창 19개 (19, 200, 5)
 → 창마다 25차원 특징 (19, 25). 특징은 시행마다 따로 계산되어 분할과 무관하므로 전체 시행을
@@ -59,17 +59,17 @@ def td_features(w: np.ndarray, th: float = ZC_TH) -> np.ndarray:
     return np.concatenate([rms, mav, wl, zc, ssc])
 
 
-def trial_features(x: np.ndarray, do_filter: bool = True) -> np.ndarray:
+def trial_features(x: np.ndarray, do_filter: bool = True, start: int = START) -> np.ndarray:
     """시행 하나를 끝까지 처리한다. (5000, 5) -> (19, 25)"""
     if do_filter:
         x = preprocess(x)
-    return np.stack([td_features(w) for w in make_windows(cut(x))])
+    return np.stack([td_features(w) for w in make_windows(cut(x, start))])
 
 
 # ---- 단계 5: 데이터셋 만들기 ----------------------------------------------------------------
 
 def make_dataset(X_all: np.ndarray, trials: pd.DataFrame,
-                 do_filter: bool = True) -> dict[str, np.ndarray]:
+                 do_filter: bool = True, start: int = START) -> dict[str, np.ndarray]:
     """모든 시행을 창 단위 특징 데이터셋으로 만든다. 표준화는 하지 않는다 (loso.py에서 fold마다).
 
     Returns: np.savez(**결과)로 바로 저장할 수 있는 dict. 행 하나 = 창 하나 (시행 수 x 19)
@@ -80,7 +80,7 @@ def make_dataset(X_all: np.ndarray, trials: pd.DataFrame,
         rep:     창이 온 시행의 반복 회차 1~30. 피험자 안에서 회차 단위로 나눌 때 쓴다
         feature_names: 25개 열 이름
     """
-    feats = np.stack([trial_features(x, do_filter) for x in X_all])  # (시행 수, 19, 25)
+    feats = np.stack([trial_features(x, do_filter, start) for x in X_all])  # (시행 수, 19, 25)
     n, k, d = feats.shape
     col = lambda c: np.repeat(trials[c].to_numpy(), k)               # 시행 정보를 창 19개에 복사
     return dict(X=feats.reshape(n * k, d).astype(np.float32),
@@ -95,10 +95,11 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="sEMG 시행을 25차원 특징 데이터셋(npz)으로 만든다")
     parser.add_argument("--out", default=ROOT / "outputs" / "dataset.npz")
     parser.add_argument("--no-filter", action="store_true", help="필터를 다시 걸지 않는다 (CSV는 이미 필터된 신호)")
+    parser.add_argument("--start", type=float, default=START / FS, help="2초 세그먼트 시작 시각(초). 기본 1.0 (1주차 동작 구간). 1.5 = 강의 실습 가정")
     args = parser.parse_args(argv)
 
     X, trials = load_trials()
-    d = make_dataset(X, trials, do_filter=not args.no_filter)
+    d = make_dataset(X, trials, do_filter=not args.no_filter, start=int(args.start * FS))
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

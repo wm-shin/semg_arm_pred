@@ -1,19 +1,19 @@
 # scripts/1_preprocessing.py — 전처리 · 특징 추출 · 데이터셋 저장
 
-실행: `python scripts/1_preprocessing.py [--out outputs/dataset.npz] [--no-filter]`
+실행: `python scripts/1_preprocessing.py [--out outputs/dataset.npz] [--no-filter] [--start 1.0]`
 
 시행 1920개 전체에 필터 → 2초 자르기 → 200 ms 윈도우 → 25차원 특징을 만들어 `dataset.npz`로 저장한다. 학습/테스트 분할과 표준화는 하지 않는다 (`scripts/loso.py`가 fold마다 한다).
 
 ```mermaid
 flowchart TD
-    start((시작)) --> M["main()<br/>--out · --no-filter"]
+    start((시작)) --> M["main()<br/>--out · --no-filter · --start"]
     M --> L["load_trials()  scripts/data.py<br/>→ X (1920, 5000, 5) · trials 표"]
     L --> MD["make_dataset(X, trials)"]
 
     subgraph P["trial_features(x): 시행 1920개마다 반복"]
         direction TB
         F["preprocess()<br/>60 Hz 노치 + 20~450 Hz 대역통과<br/>(5000, 5) → (5000, 5)"]
-        C["cut()<br/>동작 구간 2초 (1.0~3.0 s)<br/>→ (2000, 5)"]
+        C["cut()<br/>동작 구간 2초 (기본 1.0~3.0 s, --start 로 변경)<br/>→ (2000, 5)"]
         W["make_windows()<br/>200 ms 창 · 100 ms 간격<br/>→ (19, 200, 5)"]
         T["td_features() x 19<br/>RMS·MAV·WL·ZC·SSC x 5채널<br/>→ (19, 25)"]
         F --> C --> W --> T

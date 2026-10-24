@@ -2,7 +2,7 @@
 
 [2단계] 결과물: outputs/week_3/{split}/*.csv · figures/week_3/confusion8_{split}.png. --split loso 와 trialwise 로 두 번 실행한다.
 
-실행: python scripts/2_training.py [--data outputs/dataset.npz] [--split loso|trialwise] [--out outputs/week_3]
+실행: python scripts/2_training.py [--data outputs/dataset.npz] [--split loso|trialwise] [--out outputs/week_3] [--fig-suffix '']
 
 dataset.npz를 읽어 --split이 고른 분할 생성기(scripts/loso.py의 FOLDS)로 fold를 돌리면서 세 모델을
 같은 fold·같은 표준화로 학습한다. fold마다 지표 4개와 시간을 rows에, 창마다 (실제, 예측)을 preds에 모아
@@ -137,6 +137,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--data", default=DATASET)
     parser.add_argument("--split", choices=FOLDS, default="loso")
     parser.add_argument("--out", default=OUT, type=Path)
+    parser.add_argument("--fig-suffix", default="", help="그림 파일명 뒤에 붙일 꼬리표 (예: _start1.5). --out 을 바꿔 돌릴 때 기본 그림을 덮어쓰지 않게")
     args = parser.parse_args(argv)
     out = args.out / args.split
     out.mkdir(parents=True, exist_ok=True)
@@ -150,14 +151,14 @@ def main(argv: list[str] | None = None) -> None:
     preds.to_csv(out / "preds.csv", index=False)
     tt = paired_ttest(scores)
     tt.to_csv(out / "ttest.csv", index=False)
-    plot_confusion(preds, le.classes_, FIG / f"confusion8_{args.split}.png")
+    plot_confusion(preds, le.classes_, FIG / f"confusion8_{args.split}{args.fig_suffix}.png")
 
     pd.set_option("display.width", 160)
     print(f"\n② 성능 비교표 (fold 평균 ± 표준편차, macro)\n{mean_std(scores, METRICS)}")
     print(f"\n③ fold별 정확도\n{fold_table(scores).round(4)}")
     print(f"\n④ 대응표본 t-검정 (fold별 정확도, 자유도 {scores.fold.nunique() - 1})\n{tt.round(4).to_string(index=False)}")
     print(f"\n⑥ 계산 비용 (학습 s · 추론 ms/표본, fold 평균 ± 표준편차)\n{mean_std(scores, ['train_s', 'infer_ms'])}")
-    print(f"\n저장: {out}/scores.csv · preds.csv · ttest.csv, {FIG}/confusion8_{args.split}.png")
+    print(f"\n저장: {out}/scores.csv · preds.csv · ttest.csv, {FIG}/confusion8_{args.split}{args.fig_suffix}.png")
 
 
 if __name__ == "__main__":

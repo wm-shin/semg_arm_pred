@@ -55,6 +55,37 @@ flowchart TD
     style TT stroke:#3fb9c4,stroke-width:3px
 ```
 
+## 데이터 예시
+
+`scores.csv` (loso, 24행 = fold 8 x 모델 3). rows 리스트의 행 하나가 이것:
+
+| fold | model | acc | precision | recall | f1 | train_s | infer_ms |
+|---|---|---|---|---|---|---|---|
+| a | SVM | 0.6917 | 0.7331 | 0.6917 | 0.6803 | 0.1301 | 0.1602 |
+| a | RF | 0.5292 | 0.6263 | 0.5292 | 0.5154 | 0.1763 | 0.05727 |
+| a | XGB | 0.4958 | 0.5165 | 0.4958 | 0.4767 | 7.142 | 0.01263 |
+| b | SVM | 0.525 | 0.5475 | 0.525 | 0.4784 | 0.1305 | 0.1665 |
+| h | XGB | 0.5333 | 0.4825 | 0.5333 | 0.4659 | 7.164 | 0.01017 |
+
+`preds.csv` (loso, 5760행 = 표본 1920 x 모델 3). 표본 하나가 한 행. 혼동행렬은 `model` 열로 골라 `y`와 `pred`를 센다:
+
+| fold | subject | model | y | pred |
+|---|---|---|---|---|
+| a | a | SVM | 30_supination | 30_supination |
+| a | a | SVM | 30_supination | 30_supination |
+| a | a | SVM | 30_supination | 30_supination |
+| a | a | RF | 30_supination | 30_supination |
+| a | a | RF | 30_supination | 60_supination |
+| h | h | XGB | 60_pronation | 30_fist |
+
+`ttest.csv` (loso):
+
+| pair | mean_diff | t | p | verdict |
+|---|---|---|---|---|
+| SVM vs RF | 0.04688 | 1.235 | 0.2565 | 유의하지 않음 |
+| SVM vs XGB | 0.05729 | 1.497 | 0.178 | 유의하지 않음 |
+| RF vs XGB | 0.01042 | 0.5735 | 0.5842 | 유의하지 않음 |
+
 ## 그림에서 봐야 할 것
 
 - **하이퍼파라미터는 파일 상단 전역 변수에 모여 있다.** `SVM_C`, `SVM_GAMMA`, `RF_TREES`, `RF_MAX_DEPTH`, `XGB_TREES`, `XGB_MAX_DEPTH`, `XGB_LR`, `XGB_SUBSAMPLE`, `XGB_COLSAMPLE`, `XGB_LAMBDA`. 값을 바꿔 돌릴 때는 `--out`으로 다른 폴더를 줘야 기준 결과(scores·preds·ttest)를 덮어쓰지 않는다. 실행 시작 때 설정값을 출력하므로 로그만 봐도 어떤 값이었는지 안다. 하이퍼파라미터 조정은 `docs/rf_validation.md`의 검증 곡선으로 판단했고, 바꿀 이유가 없어 논문 설정을 그대로 쓴다. 튜닝은 fold 안의 학습 쪽으로만 해야 하고, 테스트 fold 점수를 보고 값을 고르면 그 점수는 더 이상 공정한 평가가 아니다.
